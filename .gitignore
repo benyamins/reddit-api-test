@@ -1,0 +1,7 @@
+main2.py
+__pycache__/
+docs/
+.venv
+.idea/
+conf.ini
+.pytest_cache/
