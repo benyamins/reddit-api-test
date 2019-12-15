@@ -1,7 +1,7 @@
-from .settings import DATABASE, MODULE_PATH, SUPPORTED_SECTIONS
+from .settings import DATABASE, MODULE_PATH, SUPPORTED_SECTIONS, LOGGING_LEVEL
 from pathlib import PosixPath
 from typing import List, Any, Tuple, Union
-from .utils import Colors
+from .utils import clrs
 
 import sqlite3 as sql
 import sys
@@ -13,7 +13,7 @@ stream_handler = logging.StreamHandler()
 
 logger.addHandler(stream_handler)
 
-logger.setLevel(logging.DEBUG)
+logger.setLevel(LOGGING_LEVEL)
 
 class SelectedTableError(Exception):
     """ Error related to created tables in sqlite3 """
@@ -36,14 +36,15 @@ class DBConnection:
         ('Upvoted', 'INTEGER'),
         ('Author', 'TEXT'),
         ('Gilded', 'INTEGER'),
-        ('NumComments', 'INTEGER')
+        ('NumComments', 'INTEGER'),
+        ('FullName', 'TEXT')
     ]
 
     def __init__(self,
                 table_name: str=None, 
                 db_name: PosixPath=DATABASE) -> None:
         self.db_name = db_name
-        self.table_name = table_name if table_name is not None else self._last_used()
+        self.table_name = table_name.lower() if table_name is not None else self._last_used()
         self._check_db()
 
 
@@ -66,36 +67,52 @@ class DBConnection:
         db.close()
 
 
-    def _insert_or_update(self, query: str, args: List[Any]=[]) -> None:
-        # See this needs another abstraction on top
-        # in case the insert query preparation is done on
-        # this class or the api
-        # TODO: maybe this isn't a private class.
+    def _insert_or_update(self, query: str, args: List[Any]=[], many=False) -> None:
 
-        logger.debug(f'{Colors.WARNING}_insert_or_update:'
-                f' ===== \n  {query} \n===== \n{Colors.ENDC}')
+        logger.debug(f'{clrs.WARNING}_insert_or_update:'
+                f' ===== \n  {query} \n===== \n{clrs.ENDC}')
 
         with self._get_db() as db:
-            db.execute(query, args)
+            if many:
+                db.executemany(query, args)
+            else:
+                db.execute(query, args)
         db.close()
 
 
     def select_db(self) -> str:
         # TODO: there seems to be a problem. How do i abstract the selection.
 
-        logger.debug(f'{Colors.WARNING}select_db: self.table_name{Colors.ENDC}')
+        logger.debug(f'{clrs.WARNING}select_db:======\n\n\t{self.table_name}{clrs.ENDC}'
+                '\n======')
 
         db: sql.Connection = self._get_db()
         result: sql.Cursor = db.execute("SELECT * FROM LastUsed")
         if not result.fetchall():
-            _insert_or_update(
+            self._insert_or_update(
                 "INSERT INTO LastUsed (TableName) VALUES (?)", [self.table_name]
             )
         else:
-            _insert_or_update("UPDATE LastUsed SET TableName = ?", [self.table_name])
+            self._insert_or_update("UPDATE LastUsed SET TableName = ?", [self.table_name])
 
 
     def query(self, query: str, args: List[Any]=[]) -> List[Any]:
+        """
+            Parameters
+            ----------
+                query: String containing a valid sql query.
+                args : arguments to pass to the '?' for templating.
+
+            Returns
+            -------
+                List[PostData[int, float, str]]: A row corresponding to a post.
+
+            Example
+            -------
+                >>> con = DBConnection()
+                >>> con.query('select * from saved where author = ?', ['madeto_be'])
+                [('foo', 'bar', '..'), ('baz', 'spam')]
+        """
         db: sql.Connection = self._get_db()
         cursor: sql.Cursor = db.cursor()
         result: List[Any] = cursor.execute(query, args).fetchall()
@@ -103,10 +120,29 @@ class DBConnection:
 
         return result
 
-    def _insert_section(self, args: List[Any]) -> None:
+    def insert_section(self, args: Union[List[Any], List[List[Any]]], many=False) -> None:
         """
             Insert to a secction table
             pass only the arguments to the insert operation
+
+            Parameters
+            ----------
+                args : Arguments to be passed for insert or bulk insert.
+                    If List[List] then many=True must be passed. TODO: Code should know
+                    what to use.
+                many : Defult uses execute, True uses executemany.
+
+            Returns
+            -------
+                None
+
+            Example
+            -------
+                >>> con = DBConnection('saved')  # LastUsed in case of None
+                >>> args1 = ['foo', 'bar', '..']
+                >>> con.insert_section(args1)
+                >>> args2 = [['foo', 'bar', '..'], ['foo2', 'bar2', '..2']]
+                >>> con.insert_section(args2)
         """
 
         columns = ','.join(column[0] for column in DBConnection.column_names)
@@ -117,16 +153,17 @@ class DBConnection:
             ({','.join('?' for _ in range(len(DBConnection.column_names)))})
         """
 
-        self._insert_or_update(query, args)
+        self.select_db()
+        self._insert_or_update(query, args, many)
     
 
     def _create_table(self) -> None:
 
         columns = ','.join(
-            f'{column[0]} {column[1]}' for column in DBConnection.column_names
+            f'\n\t{column[0]} {column[1]}' for column in DBConnection.column_names
         )
 
-        logger.debug(f'Creating Table with column: {columns}')
+        logger.debug(f'Creating {self.table_name} Table with column: {columns}')
 
         create_query = f"""
         CREATE TABLE {self.table_name} (
@@ -138,10 +175,10 @@ class DBConnection:
         INSERT INTO ExistingTables (TableName)
         VALUES (?)
         """
-        with self._get_db() as db:
-            db.execute(create_query)
-            self._insert_or_update(inser_query, [self.table_name])
-        db.close()
+
+        self._insert_or_update(create_query)
+        self._insert_or_update(inser_query, [self.table_name])
+        self.select_db()
 
 
     def _check_db(self) -> None:
@@ -150,7 +187,7 @@ class DBConnection:
         else create them
         """
 
-        logger.debug(f"\n{Colors.WARNING}Checking DB{Colors.ENDC}\n")
+        logger.debug(f"\n{clrs.WARNING}Checking DB{clrs.ENDC}\n")
 
         if self.table_name not in SUPPORTED_SECTIONS:
             raise SelectedTableError('Section Not Supported, Check Settings')
@@ -162,16 +199,14 @@ class DBConnection:
             return None
 
         elif self.db_name.exists():
-            db: sql.Connection = self._get_db()
-            result: sql.Cursor = db.execute(
+            result: List[Any] = self.query(
                 "SELECT * FROM sqlite_master WHERE name = ?", [self.table_name]
             )
 
-            if not result.fetchall():
-                print(f'Creating table {self.db_name.name}')
+            if not result:
+                print(f'Creating table {self.table_name}')
                 self._create_table()
 
-            db.close()
 
 
     def _last_used(self) -> str:
@@ -179,7 +214,7 @@ class DBConnection:
             last_used: List[Tuple[str]] = self.query('SELECT TableName FROM LastUsed') 
         except sql.OperationalError as err:
             raise SelectedTableError("The DB hasnt been initialize")
-        if not last_used:
+        if not last_used: # Will never reach this section
             raise SelectedTableError('No last used table and no table_name was provided')
         else:
             last_used: str = last_used[0][0]
@@ -187,13 +222,23 @@ class DBConnection:
         return last_used
 
 
+class RedditDB(DBConnection):
+    pass
+
+
 if __name__ == '__main__':
     # TODO: THIS SHOULD BE ON TEST!!
-    # foo = DBConnection('saved')
-    foo = DBConnection('saved')
+    foo = DBConnection('gilded')
     args = ['https://how.com', 'SomeTitle', '/r/golang', 'https://foo', 42132.32, 120, 'Author',
-            107, 2]
-    foo._insert_section(args)
-    res: List[Any] = foo.query('SELECT * FROM saved')
+            1, 2, 't3_15bfi0']
+    args2 = [
+        ['https://how.com', 'SomeTitle', '/r/golang', 'https://foo', 42132.32, 120, 'Author',
+            2, 2, 't3_15bfi0'],
+        ['https://how.com', 'SomeTitle', '/r/golang', 'https://foo', 42132.32, 120, 'Author',
+            3, 2, 't3_15bfi0'],
+    ]
+    foo.insert_section(args)
+    foo.insert_section(args2, many=True)
+    res: List[Any] = foo.query('SELECT * FROM gilded')
 
 

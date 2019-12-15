@@ -60,8 +60,11 @@ def main() -> None:
     # Start DB if none
 
     # Pase args
-    arguments: argparse.Namespace = get_args()
-    proc_args(arguments)
+    # arguments: argparse.Namespace = get_args()
+    # proc_args(arguments)
+    from .db import DBConnection
+
+    foo = DBConnection()
 
 
 if __name__ == '__main__':

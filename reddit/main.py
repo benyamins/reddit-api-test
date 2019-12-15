@@ -8,25 +8,57 @@ from .db import DBConnection
             Title TEXT,         --title
             Subreddit TEXT,     --subreddit
             RedditLink TEXT,    --permalink
-            CreateDate REAL, --
-            Upvoted INTEGER     --ups
-
+            CreateDate REAL, --created_utc
+            Upvoted INTEGER     --score
             Author TEXT, --author
             Gilded INTEGER --gilded
             NumComments INTEGER --num_comments
+            FullName --name
+
 """
 
 
 def foo():
+
+    section = 'comments'
+
     reddit = RedditConnect()
 
     saved_data: List[Dict[str, Any]]
     next_listing: str 
 
-    saved_data, next_listing = reddit.query('saved')
+    print('queryng')
+    saved_data, next_listing, res = reddit.query(section)
+    print(res)
 
-    for post in saved_data:
-        post['title']
+    from pprint import pprint
+    print(len(saved_data))
+    pprint(saved_data[0])
+
+    while next_listing:
+
+        saved = []
+
+        for data in saved_data:
+            links = [
+                data['url'],
+                data['title'],
+                data['subreddit'],
+                data['permalink'],
+                data['created_utc'],
+                data['score'],
+                data['author'],
+                data['gilded'],
+                data['num_comments'],
+                data['name']
+            ]
+            saved.append(links)
+
+        # for i, e in enumerate(saved):
+            # print(i, e[2], e[9])
+
+        saved_data, next_listing, res = reddit.query(section, next_listing)
+
 
 
 def data_base():
@@ -40,4 +72,4 @@ def data_base():
 
 
 if __name__ == '__main__':
-    data_base()
+    foo()

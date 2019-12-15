@@ -7,17 +7,21 @@ import logging
 import requests
 from requests.exceptions import HTTPError
 
-from .settings import REDDIT_URL, REDDIT_AUTH_URL, config, SUPPORTED_SECTIONS
+from .settings import REDDIT_URL, REDDIT_AUTH_URL, config, SUPPORTED_SECTIONS, LOGGING_LEVEL
 
 # Keep track of
 # 'x-ratelimit-remaining' : Number of requests done
 # 'x-ratelimit-used'      : Requests left to use
 # 'x-ratelimit-reset'     : Number of sec. to en period.
 
+
 logger: logging.Logger = logging.getLogger(__name__)
 
-logger.setLevel(logging.DEBUG)
+stream_handler = logging.StreamHandler()
 
+logger.addHandler(stream_handler)
+
+logger.setLevel(LOGGING_LEVEL)
 
 @dataclass
 class Payload:
@@ -45,12 +49,12 @@ class Token:
 class TokenLimitError(Exception):
     """ Token expired or can't be used """
 
-class SeccttionNotSupported(Exception):
+class SectionNotSupported(Exception):
     """ The specified secction is not supported. See SUPPORTED_SECTIONS."""
 
 class RedditConnect:
     """
-    This class manages the connection & actions employaaaaaaaaaaaaaaa-
+    This class manages the connection & actions.
     """
 
 
@@ -164,7 +168,7 @@ class RedditConnect:
             sections = '\n\t' + '\n\t'.join(SUPPORTED_SECTIONS)
             logger.debug("\nThe supported sections are:\n\n"
                     f"{sections}\n")
-            raise SeccttionNotSupported
+            raise SectionNotSupported
 
         params = {'after': after}
 
@@ -192,21 +196,5 @@ class RedditConnect:
 
         posts = [post['data'] for post in response_data['data']['children']]
 
-        return posts, response_data['data']['after']
+        return posts, response_data['data']['after'], response_data
 
-
-if __name__ == '__main__':
-    # data: {url, title, subreddit, permalink}
-    """
-                UploadedUrl TEXT,   --url
-                Title TEXT,         --title
-                Subreddit TEXT,     --subreddit
-                RedditLink TEXT,    --permalink
-                CreateDate REAL,    --created_utc
-                Upvoted INTEGER     --score
-
-                Author TEXT, --author
-                Gilded INTEGER --gilded
-                NumComments INTEGER --num_comments
-    """
-    r = RedditConnect()

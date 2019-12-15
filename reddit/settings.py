@@ -2,7 +2,9 @@ import sys
 from typing import Dict, Any, Union
 from configparser import ConfigParser
 from pathlib import Path, PosixPath
+from logging import DEBUG
 
+LOGGING_LEVEL = DEBUG
 
 MODULE_PATH: PosixPath = Path(__file__).parent.absolute()
 
@@ -26,7 +28,6 @@ REDDIT_AUTH_URL = 'https://oauth.reddit.com'
 SUPPORTED_SECTIONS = [
     'overview',
     'submitted',
-    'comments',
     'upvoted',
     'downvoted',
     'hidden',

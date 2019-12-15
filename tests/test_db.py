@@ -1,7 +1,8 @@
-from reddit import DBConnection
+from reddit.db import DBConnection
 
 
 def test_db():
+
     con = DBConnection('saved')
 
-    assert con.db_name == 'saved'
+    assert con.table_name == 'saved'

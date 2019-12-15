@@ -1,4 +1,4 @@
-from reddit import RedditConnect
+from reddit.api import RedditConnect
 
 def test_instance():
     con = RedditConnect()
