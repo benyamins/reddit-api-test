@@ -60,10 +60,10 @@ class DBConnection:
         logger.debug(f'Initializing DB: {self.db_name}')
         logger.debug('Creating LastUsed & ExistingTables')
 
-        db: sql.Connection = self._get_db()
-        db.execute('CREATE TABLE LastUsed (Id INTEGER PRIMARY KEY, TableName TEXT)')
-        db.execute('CREATE TABLE ExistingTables (Id INTEGER PRIMARY KEY, TableName TEXT)')
-        db.commit()
+        with self._get_db() as db:
+            db.execute('CREATE TABLE LastUsed (Id INTEGER PRIMARY KEY, TableName TEXT)')
+            db.execute('CREATE TABLE ExistingTables (Id INTEGER PRIMARY KEY, TableName TEXT)')
+            db.execute('CREATE TABLE LastListing (Id INTEGER PRIMARY KEY, Listing TEXT)')
         db.close()
 
 
@@ -142,7 +142,7 @@ class DBConnection:
                 >>> args1 = ['foo', 'bar', '..']
                 >>> con.insert_section(args1)
                 >>> args2 = [['foo', 'bar', '..'], ['foo2', 'bar2', '..2']]
-                >>> con.insert_section(args2)
+                >>> con.insert_section(args2, many=True)
         """
 
         columns = ','.join(column[0] for column in DBConnection.column_names)
@@ -177,8 +177,10 @@ class DBConnection:
         """
 
         self._insert_or_update(create_query)
-        self._insert_or_update(inser_query, [self.table_name])
-        self.select_db()
+
+        if self.table_name in SUPPORTED_SECTIONS:
+            self._insert_or_update(inser_query, [self.table_name])
+            self.select_db()
 
 
     def _check_db(self) -> None:

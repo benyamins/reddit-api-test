@@ -29,6 +29,13 @@ class Payload:
     header: Dict[str, str]
 
 @dataclass
+class Content:
+    data: List[Dict[str, Any]]
+    after: str
+    response: requests.Response
+
+
+@dataclass
 class Token:
     """
     Hold the token data, provided by reddit.
@@ -64,7 +71,7 @@ class RedditConnect:
         self.client_id: str = config['auth']['client_id']
         self.client_secret: str = config['auth']['secret']
         self.user_agent: str = config['auth']['uagent']
-        self.token = self._gen_token()
+        self.token: Token = self._gen_token()
 
     def __str__(self) -> str:
         return self.username
@@ -150,7 +157,7 @@ class RedditConnect:
 
         Returns
         -------
-            Tuple[ListingData, Fullname]: Fullname can be passed again to this
+            TODO: Tuple[ListingData, Fullname]: Fullname can be passed again to this
                 function to return the next listing.
 
         Example
@@ -196,5 +203,8 @@ class RedditConnect:
 
         posts = [post['data'] for post in response_data['data']['children']]
 
-        return posts, response_data['data']['after'], response_data
+        content = Content(posts, response_data['data']['after'], response)
 
+        return content 
+
+# t3_e7et6t

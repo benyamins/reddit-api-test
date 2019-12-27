@@ -1,7 +1,9 @@
 from typing import List, Dict, Any
+import logging
 
-from .api import RedditConnect
+from .api import RedditConnect, Content
 from .db import DBConnection
+from .settings import LOGGING_LEVEL
 
 """
             UploadedUrl TEXT,   --url
@@ -17,29 +19,32 @@ from .db import DBConnection
 
 """
 
+logger: logging.Logger = logging.getLogger(__name__)
+
+stream_handler = logging.StreamHandler()
+
+logger.addHandler(stream_handler)
+
+logger.setLevel(LOGGING_LEVEL)
+
 
 def foo():
 
-    section = 'comments'
+    section = 'saved'
 
     reddit = RedditConnect()
 
-    saved_data: List[Dict[str, Any]]
-    next_listing: str 
+    db_con = DBConnection('saved')
+
 
     print('queryng')
-    saved_data, next_listing, res = reddit.query(section)
-    print(res)
+    content: Content = reddit.query(section)
 
-    from pprint import pprint
-    print(len(saved_data))
-    pprint(saved_data[0])
+    saved = []
 
-    while next_listing:
+    while content.after:
 
-        saved = []
-
-        for data in saved_data:
+        for data in content.data:
             links = [
                 data['url'],
                 data['title'],
@@ -57,18 +62,22 @@ def foo():
         # for i, e in enumerate(saved):
             # print(i, e[2], e[9])
 
-        saved_data, next_listing, res = reddit.query(section, next_listing)
+        logger.debug(f"len : {len(content.data)}-listing : {content.after}"
+                f"-response : {content.response}"
+                f"-requests_remaining : {reddit.token.requests_remaining}"
+                f"-len_saved : {len(saved)}")
+
+        content: Content = reddit.query(section, content.after)
+
+    logger.debug(f"len : {len(content.data)}-listing : {content.after}"
+            f"-response : {content.response}"
+            f"-requests_remaining : {reddit.token.requests_remaining}"
+            f"-len_saved : {len(saved)}")
+
+    db_con.insert_section(saved, many=True)
 
 
 
-def data_base():
-
-
-    con = DBConnection()
-
-    res = con.query('select * from saved')
-
-    for e in res: print(e)
 
 
 if __name__ == '__main__':
