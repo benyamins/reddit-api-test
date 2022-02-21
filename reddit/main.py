@@ -28,16 +28,15 @@ logger.addHandler(stream_handler)
 logger.setLevel(LOGGING_LEVEL)
 
 
-def foo():
+def get_content():
 
-    section = 'saved'
+    section = "saved"
 
     reddit = RedditConnect()
 
-    db_con = DBConnection('saved')
+    db_con = DBConnection("saved")
 
-
-    print('queryng')
+    print("queryng")
     content: Content = reddit.query(section)
 
     saved = []
@@ -46,39 +45,33 @@ def foo():
 
         for data in content.data:
             links = [
-                data['url'],
-                data['title'],
-                data['subreddit'],
-                data['permalink'],
-                data['created_utc'],
-                data['score'],
-                data['author'],
-                data['gilded'],
-                data['num_comments'],
-                data['name']
+                data["url"],
+                data["title"],
+                data["subreddit"],
+                data["permalink"],
+                data["created_utc"],
+                data["score"],
+                data["author"],
+                data["gilded"],
+                data["num_comments"],
+                data["name"],
             ]
             saved.append(links)
 
-        # for i, e in enumerate(saved):
-            # print(i, e[2], e[9])
-
-        logger.debug(f"len : {len(content.data)}-listing : {content.after}"
-                f"-response : {content.response}"
-                f"-requests_remaining : {reddit.token.requests_remaining}"
-                f"-len_saved : {len(saved)}")
+        logger.debug(
+            f"len : {len(content.data)}-listing : {content.after}"
+            f"-response : {content.response}"
+            f"-requests_remaining : {reddit.token.requests_remaining}"
+            f"-len_saved : {len(saved)}"
+        )
 
         content: Content = reddit.query(section, content.after)
 
-    logger.debug(f"len : {len(content.data)}-listing : {content.after}"
-            f"-response : {content.response}"
-            f"-requests_remaining : {reddit.token.requests_remaining}"
-            f"-len_saved : {len(saved)}")
+    logger.debug(
+        f"len : {len(content.data)}-listing : {content.after}"
+        f"-response : {content.response}"
+        f"-requests_remaining : {reddit.token.requests_remaining}"
+        f"-len_saved : {len(saved)}"
+    )
 
     db_con.insert_section(saved, many=True)
-
-
-
-
-
-if __name__ == '__main__':
-    foo()

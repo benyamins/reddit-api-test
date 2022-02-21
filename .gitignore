@@ -5,3 +5,4 @@ docs/
 .idea/
 conf.ini
 .pytest_cache/
+reddit.db
