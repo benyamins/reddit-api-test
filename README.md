@@ -4,7 +4,7 @@
 ## Example
 
 ``` bash
-rr list saved --last 3 --filter soccer
+rr list saved --last 2 --filter soccer
 
 # |----|-----------|--------|--------------------|
 # | id | subreddit | title  | url                |
